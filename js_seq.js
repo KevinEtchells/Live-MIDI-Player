@@ -34,7 +34,7 @@ process.stdin.on('data', function (char) {
 				
 				// if we have 4 times change the tempo
 				if (tapTempoTimes.length === 4) {
-					player.setTempo(parseInt(60000 / ((tapTempoTimes[3] - tapTempoTimes[0]) / 4)));
+					player.setTempo(parseInt(60000 / ((tapTempoTimes[3] - tapTempoTimes[0]) / 3)));
 					tapTempoTimes = [];
 				}
 				

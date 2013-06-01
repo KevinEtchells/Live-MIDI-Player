@@ -12,6 +12,7 @@ var midiFileParser = require('midi-file-parser'),
 output.openVirtualPort('js_seq');
 
 var nextCommand = function(position) {
+	//process.stdout.write(' *' + char);
 	if (on) {
 		currentSong.tracks.forEach(function(track, trackIndex) {
 			track.forEach(function(command) {
@@ -78,12 +79,15 @@ module.exports = {
 	setTempo: function(newTempo) {
 		tempo = newTempo;
 		tempoOverride = true;
+		
+		// if not already playing, start, but after leaving a beat's length
 		if (!on) {
-			this.togglePlay();
+			setTimeout(function(callback) {
+				callback();
+			}, parseInt(60000 / tempo / 12), this.togglePlay);
 		}
+
 		console.log('\nTempo changed to ' + tempo + ' bpm');
 	}
 
 };
-
-//process.stdout.write(' *' + char);
