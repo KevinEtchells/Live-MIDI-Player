@@ -45,7 +45,7 @@ process.stdin.on('data', function (char) {
 			tapTempoTimes.push(currentTime);
 		}
 		
-	} else if (char == '1') {
+	} else if (char == '1') {  // TO DO - just have 2 keys - song up and song down, then numbers can be used to switch on/off individual tracks ('-' & '=' ?)
 		player.load(songs[0]);
 	} else if (char == '2') {
 		if (songs.length >= 2) {
@@ -82,5 +82,7 @@ process.stdin.on('data', function (char) {
 	} else if (char == '\3') { 
 		console.log('\nExiting...'); 
 		process.exit(); 
-	} 
+	} else if (char == 'c' || char == 'v' || char == 'd' || char == 'r' || char == 'e' || char == 'f' || char == 't' || char == 'g' || char == 'y' || char == 'a' || char == 'w' || char == 'b') {
+		player.jumpTo(char.toString());
+	}
 });
