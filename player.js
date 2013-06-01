@@ -6,13 +6,20 @@ var midiFileParser = require('midi-file-parser'),
 	on = false,
 	tempo = 120,
 	tempoOverride = false;
-	ticksPerUnit = 384 / 12; // 32
+	ticksPerUnit = 384 / 12, // 32
+	beatsPerBar = 4; // TO DO - set this from MIDI file ****************
 	
 // setup output port
 output.openVirtualPort('js_seq');
 
-var nextCommand = function(position) {
-	//process.stdout.write(' *' + char);
+var nextCommand = function(position, beatInfo) {
+	if (beatInfo.subBeat === 1) {
+		if (beatInfo.beat === 1) {
+			process.stdout.write('\n');
+		}
+		process.stdout.write(beatInfo.beat + ' ');
+	}
+	
 	if (on) {
 		currentSong.tracks.forEach(function(track, trackIndex) {
 			track.forEach(function(command) {
@@ -21,9 +28,22 @@ var nextCommand = function(position) {
 				}
 			});
 		});
-		setTimeout(function(nextPosition) {
-			nextCommand(nextPosition);
-		}, parseInt(60000 / tempo / 12), position + ticksPerUnit);
+		setTimeout(function(position, beatInfo) {
+			
+			if (beatInfo.subBeat === 12) {
+				beatInfo.subBeat = 1;
+				if (beatInfo.beat === beatsPerBar) {
+					beatInfo.bar++;
+					beatInfo.beat = 1;
+				} else {
+					beatInfo.beat++;
+				}
+			} else {
+				beatInfo.subBeat++;
+			}
+			
+			nextCommand(position + ticksPerUnit, beatInfo);
+		}, parseInt(60000 / tempo / 12), position, beatInfo);
 	} else {
 		currentSong.tracks.forEach(function(track, trackIndex) {
 			for (var pitch = 0; pitch < 128; pitch++) {
@@ -72,7 +92,7 @@ module.exports = {
 		on = !on;
 		if (on) {
 			console.log('\nPlaying...');
-			nextCommand(0);
+			nextCommand(0, {bar: 1, beat: 1, subBeat: 1});
 		}
 	},
 	
