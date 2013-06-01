@@ -1,17 +1,15 @@
 var midiFileParser = require('midi-file-parser'),
 	midi = require('midi'),
 	fs = require('fs'),
-	outputs = [new midi.output(), new midi.output()],
+	output = new midi.output(),
 	currentSong,
 	on = false,
 	tempo = 60,
 	tempoOverride = false;
 	ticksPerBeat = 384;
 	
-// setup output ports
-outputs.forEach(function(output, index) {
-	output.openVirtualPort('js_seq output ' + (index + 1));
-});
+// setup output port
+output.openVirtualPort('js_seq');
 
 var nextCommand = function(track, position) {
 	if (on) {
@@ -39,10 +37,10 @@ var nextCommand = function(track, position) {
 
 var processCommand = function(command, track) {
 	if (command.subtype === 'setTempo' && !tempoOverride) {
-		tempo = 60 / (command.microsecondsPerBeat / 1000000)
+		tempo = 60000000 / command.microsecondsPerBeat;
 		console.log('\nTempo changed to ' + tempo + ' bpm');
 	} else if (command.subtype === 'noteOn' || command.subtype === 'noteOff') {
-		outputs[track].sendMessage([144, command.noteNumber, command.velocity]);
+		output.sendMessage([144 + track, command.noteNumber, command.velocity]);
 	}
 };
 
