@@ -4,33 +4,31 @@ var midiFileParser = require('midi-file-parser'),
 	output = new midi.output(),
 	currentSong,
 	on = false,
-	tempo = 60,
+	tempo = 120,
 	tempoOverride = false;
-	ticksPerBeat = 384;
+	ticksPerUnit = 384 / 12; // 32
 	
 // setup output port
 output.openVirtualPort('js_seq');
 
-var nextCommand = function(track, position) {
+var nextCommand = function(position) {
 	if (on) {
-		if (currentSong.tracks[track].length > position) {
-			var command = currentSong.tracks[track][position];
-			
-			if (command.deltaTime && command.deltaTime > 0) {
-				var time = parseInt((60000 / tempo / ticksPerBeat) * command.deltaTime);
-				setTimeout(function(track, position, command) {
-					processCommand(command, track);
-					nextCommand(track, position + 1);
-				}, time, track, position, command);
-			} else {
-				processCommand(command, track);
-				nextCommand(track, position + 1);
-			}
-		}
+		currentSong.tracks.forEach(function(track, trackIndex) {
+			track.forEach(function(command) {
+				if (command.cumulativeTime >= position - (ticksPerUnit / 2) && command.cumulativeTime < position + (ticksPerUnit / 2)) {
+					processCommand(command, trackIndex);
+				}
+			});
+		});
+		setTimeout(function(nextPosition) {
+			nextCommand(nextPosition);
+		}, parseInt(60000 / tempo / 12), position + ticksPerUnit);
 	} else {
-		for (var pitch = 0; pitch < 128; pitch++) {
-			processCommand({subtype: 'noteOff', noteNumber: pitch, velocity: 0}, track);
-		}
+		currentSong.tracks.forEach(function(track, trackIndex) {
+			for (var pitch = 0; pitch < 128; pitch++) {
+				processCommand({subtype: 'noteOff', noteNumber: pitch, velocity: 0}, trackIndex);
+			}
+		});
 		console.log('\nStopped...');
 	}
 };
@@ -56,6 +54,16 @@ module.exports = {
 			return false;
 		}
 		currentSong = midiFileParser(file);
+		
+		// parse currentSong to put in absolute time references
+		currentSong.tracks.forEach(function(track, index) {
+			var cumulativeTime = 0;
+			track.forEach(function(command, index) {
+				cumulativeTime += command.deltaTime;
+				command.cumulativeTime = cumulativeTime;
+			});
+		});
+
 		console.log('song "' + path + '" loaded');
 	},
 	
@@ -63,9 +71,7 @@ module.exports = {
 		on = !on;
 		if (on) {
 			console.log('\nPlaying...');
-			currentSong.tracks.forEach(function(track, index) {
-				nextCommand(index, 0);
-			});
+			nextCommand(0);
 		}
 	},
 	
