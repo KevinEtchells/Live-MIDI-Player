@@ -7,10 +7,10 @@ var midiFileParser = require('midi-file-parser'),
 	tempo = 120,
 	tempoOverride = false,
 	ticksPerBeat = 384, // TO DO - what about other time signatures, e.g. 6/8??
-	beatsPerBar = 4, // TO DO - set this from MIDI file ***********************************************************************************
+	beatsPerBar = 4,
 	subBeats = 12,
 	locationMarkers = {}, // only uses first value for each key at the moment, but values stored as arrays for future implementation
-	newLocation = 0; //
+	newLocation = 0; // anything other than 0 means a position change is pending
 	
 // setup output port
 output.openVirtualPort('js_seq');
@@ -63,6 +63,8 @@ var processCommand = function(command, track) {
 			tempo = 60000000 / command.microsecondsPerBeat;
 			console.log('\nTempo changed to ' + tempo + ' bpm');
 		}
+	} else if (command.subType === 'timeSignature') {
+		beatsPerBar = command.numerator;
 	} else if (command.subtype === 'noteOn' || command.subtype === 'noteOff') {
 		output.sendMessage([144 + track, command.noteNumber, command.velocity]);
 	}
@@ -139,6 +141,9 @@ module.exports = {
 			for (indexTime = 0; indexTime <= latestTime; indexTime += (ticksPerBeat / subBeats)) {
 				track.forEach(function(command, index) {
 					if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
+						if (command.subType === 'timeSignature') {
+							beatsPerBar = command.numerator;
+						}
 						command.beatInfo = JSON.parse(JSON.stringify(beatInfo));
 					}				
 				});
