@@ -3,14 +3,15 @@ var midiFileParser = require('midi-file-parser'),
 	fs = require('fs'),
 	output = new midi.output(),
 	currentSong,
-	on = false, // TO DO - store this within each track, and global start/stops can be applied to all tracks with a forEach, then individual tracks can be muted (may need global on in js_seq.js, and do on/off functions rather than toggle)
+	on = false,
 	tempo = 120,
 	tempoOverride = false,
 	ticksPerBeat = 384, // TO DO - what about other time signatures, e.g. 6/8??
 	beatsPerBar = 4,
 	subBeats = 12,
 	locationMarkers = {}, // only uses first value for each key at the moment, but values stored as arrays for future implementation
-	newLocation = 0; // anything other than 0 means a position change is pending
+	newLocation = 0, // anything other than 0 means a position change is pending
+	mutedChannels = [false, false, false, false, false, false, false, false, false, false];
 	
 // setup output port
 output.openVirtualPort('js_seq');
@@ -26,14 +27,16 @@ var nextCommand = function(beatInfo) {
 	
 	if (on) {
 		currentSong.tracks.forEach(function(track, trackIndex) {
-			track.forEach(function(command) {
-				if (command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
-					processCommand(command, trackIndex);
-				}
-			});
+			if (!mutedChannels[trackIndex]) {
+				track.forEach(function(command) {
+					if (command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
+						processCommand(command, trackIndex);
+					}
+				});
+			}
 		});
 		setTimeout(function(beatInfo) {
-			
+
 			// if end of bar check if we need to skip to a new position
 			if (newLocation !== 0 && beatInfo.beat === beatsPerBar && beatInfo.subBeat === subBeats) {
 				beatInfo.bar = newLocation;
@@ -49,11 +52,15 @@ var nextCommand = function(beatInfo) {
 		}, parseInt(60000 / tempo / subBeats), beatInfo);
 	} else {
 		currentSong.tracks.forEach(function(track, trackIndex) {
-			for (var pitch = 0; pitch < 128; pitch++) {
-				processCommand({subtype: 'noteOff', noteNumber: pitch, velocity: 0}, trackIndex);
-			}
+			muteTrack(trackIndex);
 		});
 		console.log('\nStopped...');
+	}
+};
+
+var muteTrack = function(trackIndex) {
+	for (var pitch = 0; pitch < 128; pitch++) {
+		processCommand({subtype: 'noteOff', noteNumber: pitch, velocity: 0}, trackIndex);
 	}
 };
 
@@ -93,6 +100,7 @@ module.exports = {
 		on = false;
 		tempoOverride = false;
 		locationMarkers = {};
+		mutedChannels = [false, false, false, false, false, false, false, false, false, false];
 		
 		// load file
 		try {
@@ -121,9 +129,10 @@ module.exports = {
 			}
 		});
 
-		// parse currentSong to put in absolute time references - this is primarily to get latestTime for the next loop
+		// parse currentSong to put in absolute time references - this is primarily to get latestTime for the next loop.
 		var latestTime = 0;
 		currentSong.tracks.forEach(function(track, index) {
+
 			var absoluteTime = 0;
 			track.forEach(function(command, index) {
 				absoluteTime += command.deltaTime;
@@ -184,7 +193,6 @@ module.exports = {
 	jumpTo: function(key) {
 		if (locationMarkers[key]) {
 			console.log('\nJumping to bar ' + locationMarkers[key][0]);
-			
 			if (on) {
 				newLocation = locationMarkers[key][0];
 			} else {
@@ -196,7 +204,13 @@ module.exports = {
 	},
 	
 	toggleTrack: function(track) {
-		// TO BE FINISHED
+		mutedChannels[track] = !mutedChannels[track];
+		if (mutedChannels[track]) {
+			muteTrack(track);
+			console.log('\nTrack ' + track + ' muted');
+		} else {
+			console.log('\nTrack ' + track + ' unmuted');
+		}
 	}
 
 };
