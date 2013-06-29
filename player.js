@@ -29,7 +29,7 @@ var nextCommand = function(beatInfo) {
 		currentSong.tracks.forEach(function(track, trackIndex) {
 			if (!mutedChannels[trackIndex]) {
 				track.forEach(function(command) {
-					if (command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
+					if (command.beatInfo && command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
 						processCommand(command, trackIndex);
 					}
 				});
@@ -132,7 +132,6 @@ module.exports = {
 		// parse currentSong to put in absolute time references - this is primarily to get latestTime for the next loop.
 		var latestTime = 0;
 		currentSong.tracks.forEach(function(track, index) {
-
 			var absoluteTime = 0;
 			track.forEach(function(command, index) {
 				absoluteTime += command.deltaTime;
