@@ -1,5 +1,4 @@
 // TO DO:
-// Prevent accidental double-tapping of tempo
 // Note off's to be rounded down to previous subBeat?
 // mute by track or by MIDI channel?
 
@@ -38,20 +37,34 @@ process.stdin.on('data', function (charObj) {
 
 		// check any previously stored times are recent
 		if (tapTempoTimes.length) {
+			
+			// if there has been too much of a delay between beats - set this as the first beat
 			if (tapTempoTimes[tapTempoTimes.length - 1] >= (currentTime - 2500)) {
-				tapTempoTimes.push(currentTime);
 				
-				// if we have 4 times change the tempo
-				if (tapTempoTimes.length === 4) {
-					player.setTempo(parseInt(60000 / ((tapTempoTimes[3] - tapTempoTimes[0]) / 3)));
+				// if this has come too quickly after the last beat, cancel tap tempo
+				if (tapTempoTimes[tapTempoTimes.length - 1] >= (currentTime - 250)) {
 					tapTempoTimes = [];
+					console.log('* tap tempo - incorrect entry *');
+				} else {
+					
+					tapTempoTimes.push(currentTime);
+					console.log('*');
+				
+					// if we have 4 times change the tempo
+					if (tapTempoTimes.length === 4) {
+						player.setTempo(parseInt(60000 / ((tapTempoTimes[3] - tapTempoTimes[0]) / 3)));
+						tapTempoTimes = [];
+					}
+					
 				}
 				
 			} else {
 				tapTempoTimes = [currentTime];
+				console.log('*');
 			}
 		} else {
 			tapTempoTimes.push(currentTime);
+			console.log('*');
 		}
 		
 	} else if (char >= '0' && char <= '9') { // mute/unmute channels
