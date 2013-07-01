@@ -30,7 +30,7 @@ var nextCommand = function(beatInfo) {
 			if (!mutedChannels[trackIndex]) {
 				track.forEach(function(command) {
 					if (command.beatInfo && command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
-						processCommand(command, trackIndex);
+						processCommand(command);
 					}
 				});
 			}
@@ -60,11 +60,11 @@ var nextCommand = function(beatInfo) {
 
 var muteTrack = function(trackIndex) {
 	for (var pitch = 0; pitch < 128; pitch++) {
-		processCommand({subtype: 'noteOff', noteNumber: pitch, velocity: 0}, trackIndex);
+		processCommand({subtype: 'noteOff', noteNumber: pitch, velocity: 0, channel: trackIndex});
 	}
 };
 
-var processCommand = function(command, track) {
+var processCommand = function(command) {
 	if (command.subtype === 'setTempo' && !tempoOverride) {
 		if (tempo !== (60000000 / command.microsecondsPerBeat)) {
 			tempo = 60000000 / command.microsecondsPerBeat;
@@ -73,7 +73,8 @@ var processCommand = function(command, track) {
 	} else if (command.subType === 'timeSignature') {
 		beatsPerBar = command.numerator;
 	} else if (command.subtype === 'noteOn' || command.subtype === 'noteOff') {
-		output.sendMessage([144 + track, command.noteNumber, command.velocity]);
+		//output.sendMessage([144 + track, command.noteNumber, command.velocity]);
+		output.sendMessage([144 + command.channel, command.noteNumber, command.velocity]);
 	}
 };
 
@@ -112,6 +113,7 @@ module.exports = {
 		currentSong = midiFileParser(file);
 		
 		// load in control data
+		// subtype === 'trackName'
 		var controlTrack = currentSong.tracks.pop();
 		var cumulativeTime = 0;
 		controlTrack.forEach(function(command, index) {
@@ -133,7 +135,7 @@ module.exports = {
 		var latestTime = 0;
 		currentSong.tracks.forEach(function(track, index) {
 			var absoluteTime = 0;
-			track.forEach(function(command, index) {
+			track.forEach(function(command, index) {				
 				absoluteTime += command.deltaTime;
 				command.absoluteTime = absoluteTime;
 			});
