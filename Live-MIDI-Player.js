@@ -1,5 +1,8 @@
 // TO DO:
 // Prevent accidental double-tapping of tempo
+// Note off's to be rounded down to previous subBeat?
+// mute by track or by MIDI channel?
+
 
 var player = require('./player'),
 	songs = [],
