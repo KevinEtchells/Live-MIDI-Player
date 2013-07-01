@@ -1,0 +1,8 @@
+{
+	"name" : "Live-MIDI-Player",
+	"version" : "0.1.0",
+	"dependencies" : {
+		"midi" : "*",
+		"midi-file-parser" : "*"
+	}
+}
