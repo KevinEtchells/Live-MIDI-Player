@@ -1,9 +1,12 @@
+// TO DO:
+// Prevent accidental double-tapping of tempo
+
 var player = require('./player'),
 	songs = [],
 	currentSongIndex = 0,
 	tapTempoTimes = [];
 
-console.log('js_seq started');
+console.log('Live MIDI Player started');
 
 // load songs into array
 for (var i = 2; i < process.argv.length; i++) {
