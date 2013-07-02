@@ -92,6 +92,22 @@ var addSubBeat = function(beatInfo) {
 	}
 	return beatInfo;
 };
+var minusSubBeat = function(beatInfo) {
+	if (beatInfo.subBeat === 1) {
+		beatInfo.subBeat = subBeats;
+		if (beatInfo.beat === 1) {
+			beatInfo.beat = beatsPerBar;
+			if (beatInfo.bar !== 1) {
+				beatInfo.bar--;
+			}
+		} else {
+			beatInfo.beat--;
+		}
+	} else {
+		beatInfo.subBeat--;
+	}
+	return beatInfo;
+};
 
 module.exports = {
 	
@@ -150,12 +166,19 @@ module.exports = {
 			var beatInfo = {bar: 1, beat: 1, subBeat: 1};
 			for (indexTime = 0; indexTime <= latestTime; indexTime += (ticksPerBeat / subBeats)) {
 				track.forEach(function(command, index) {
-					if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
-						if (command.subType === 'timeSignature') {
-							beatsPerBar = command.numerator;
+					// if it's a note-off, we want to bring this forward a subbeat to avoid the same note off and on at the same time
+					if (command.subtype === 'noteOff' || command.velocity === '0') { 
+						if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
+							command.beatInfo = minusSubBeat(JSON.parse(JSON.stringify(beatInfo)));
 						}
-						command.beatInfo = JSON.parse(JSON.stringify(beatInfo));
-					}				
+					} else {
+						if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
+							if (command.subType === 'timeSignature') {
+								beatsPerBar = command.numerator;
+							}
+							command.beatInfo = JSON.parse(JSON.stringify(beatInfo));
+						}
+					}
 				});
 				beatInfo = addSubBeat(beatInfo);
 			}

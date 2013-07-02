@@ -1,9 +1,9 @@
 // TO DO:
-// Note off's to be rounded down to previous subBeat?
 // mute by track or by MIDI channel?
+// auto-connect to JACK apps
 
 
-var player = require('./player'),
+var player = require('./player.js'),
 	songs = [],
 	currentSongIndex = 0,
 	tapTempoTimes = [];
