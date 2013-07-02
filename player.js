@@ -14,7 +14,7 @@ var midiFileParser = require('midi-file-parser'),
 	mutedChannels = [false, false, false, false, false, false, false, false, false, false];
 	
 // setup output port
-output.openVirtualPort('js_seq');
+output.openVirtualPort('Live-MIDI-Player');
 
 var nextCommand = function(beatInfo) {
 
