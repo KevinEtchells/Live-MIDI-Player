@@ -27,13 +27,13 @@ var nextCommand = function(beatInfo) {
 	
 	if (on) {
 		currentSong.tracks.forEach(function(track, trackIndex) {
-			if (!mutedChannels[trackIndex]) {
+			//if (!mutedChannels[trackIndex]) {
 				track.forEach(function(command) {
 					if (command.beatInfo && command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
 						processCommand(command);
 					}
 				});
-			}
+			//}
 		});
 		setTimeout(function(beatInfo) {
 
@@ -73,8 +73,9 @@ var processCommand = function(command) {
 	} else if (command.subType === 'timeSignature') {
 		beatsPerBar = command.numerator;
 	} else if (command.subtype === 'noteOn' || command.subtype === 'noteOff') {
-		//output.sendMessage([144 + track, command.noteNumber, command.velocity]);
-		output.sendMessage([144 + command.channel, command.noteNumber, command.velocity]);
+		if (!mutedChannels[command.channel]) {
+			output.sendMessage([144 + command.channel, command.noteNumber, command.velocity]);
+		}
 	}
 };
 
@@ -228,13 +229,13 @@ module.exports = {
 	},
 	
 	toggleTrack: function(track) {
-		mutedChannels[track] = !mutedChannels[track];
-		if (mutedChannels[track]) {
-			muteTrack(track);
-			console.log('\nTrack ' + track + ' muted');
+		if (mutedChannels[track - 1]) {
+			console.log('\nChannel ' + track + ' unmuted');
 		} else {
-			console.log('\nTrack ' + track + ' unmuted');
+			muteTrack(track - 1);
+			console.log('\nChannel ' + track + ' muted');
 		}
+		mutedChannels[track - 1] = !mutedChannels[track - 1];
 	}
 
 };

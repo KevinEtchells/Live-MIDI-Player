@@ -1,6 +1,7 @@
 // TO DO:
-// mute by track or by MIDI channel?
 // auto-connect to JACK apps
+// Check from Rosegarden
+// Check 3/4 and 6/8
 
 
 var player = require('./player.js'),
@@ -68,7 +69,8 @@ process.stdin.on('data', function (charObj) {
 		}
 		
 	} else if (char >= '0' && char <= '9') { // mute/unmute channels
-		player.toggleTrack(char);
+		var channel = (char === '0') ? 10 : parseInt(char);
+		player.toggleTrack(channel);
 	} else if (char === '-') { // previous song
 		if (currentSongIndex !== 0) {
 			currentSongIndex --;
