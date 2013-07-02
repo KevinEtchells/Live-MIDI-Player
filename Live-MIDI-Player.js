@@ -1,7 +1,9 @@
 // TO DO:
-// auto-connect to JACK apps
+// make control track optional
+// Combine tracks rather than run separately?
 // Check from Rosegarden
 // Check 3/4 and 6/8
+// Documentation
 
 
 var player = require('./player.js'),

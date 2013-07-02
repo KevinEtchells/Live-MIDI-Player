@@ -1,6 +1,6 @@
-var midiFileParser = require('midi-file-parser'),
+var fs = require('fs'),
+	midiFileParser = require('midi-file-parser'),
 	midi = require('midi'),
-	fs = require('fs'),
 	output = new midi.output(),
 	currentSong,
 	on = false,
@@ -15,6 +15,11 @@ var midiFileParser = require('midi-file-parser'),
 	
 // setup output port
 output.openVirtualPort('Live-MIDI-Player');
+// in case virtual port isn't supported (Windows)...
+if (output.getPortCount()) {
+	output.openPort(0);
+}
+
 
 var nextCommand = function(beatInfo) {
 
