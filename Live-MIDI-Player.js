@@ -1,5 +1,4 @@
 // TO DO:
-// Check from Rosegarden
 // Check 3/4 and 6/8
 // Documentation
 

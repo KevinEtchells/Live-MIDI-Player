@@ -74,7 +74,7 @@ var processCommand = function(command) {
 	if (command.subtype === 'setTempo' && !tempoOverride) {
 		if (tempo !== (60000000 / command.microsecondsPerBeat)) {
 			tempo = 60000000 / command.microsecondsPerBeat;
-			console.log('\nTempo changed to ' + tempo + ' bpm');
+			console.log('\nTempo changed to ' + Math.round(tempo) + ' bpm');
 		}
 	} else if (command.subType === 'timeSignature') {
 		beatsPerBar = command.numerator;
@@ -142,31 +142,15 @@ module.exports = {
 		loadedSongData.tracks.forEach(function(track) {
 			
 			var cumulativeTime = 0;
-			var isControl = false;
 			track.forEach(function(command) {
 				
 				cumulativeTime += command.deltaTime;
-				
-				if (isControl) {
-					if (command.subtype === 'noteOn' && command.velocity > 0) {
-						var noteKeyMap = ['c', 'v', 'd', 'r', 'e', 'f', 't', 'g', 'y', 'a', 'w', 'b'];
-						if (command.noteNumber < noteKeyMap.length) {
-							var bar = Math.floor( cumulativeTime / (ticksPerBeat * beatsPerBar) ) + 1;
-							locationMarkers[noteKeyMap[command.noteNumber]] = bar;
-						}
-					}
-					
-				} else {
-				
-					if (command.subtype === 'trackName') {
-						if (command.text.toLowerCase() === 'control') {
-							isControl = true;
-						}
-					} else if (command.subtype === 'setTempo' || command.subtype === 'timeSignature' || command.subtype === 'noteOn' || command.subtype === 'noteOff') {
-						command.absoluteTime = cumulativeTime;
-						currentSong.push(command);
-					}
-					
+
+				if (command.subtype === 'setTempo' || command.subtype === 'timeSignature' || command.subtype === 'noteOn' || command.subtype === 'noteOff') {
+					command.absoluteTime = cumulativeTime;
+					currentSong.push(command);
+				} else if (command.subtype === 'marker') {
+					locationMarkers[command.text[0]] = Math.floor( cumulativeTime / (ticksPerBeat * beatsPerBar) ) + 1;
 				}
 				
 			});
@@ -202,12 +186,7 @@ module.exports = {
 			beatInfo = addSubBeat(beatInfo);
 		}
 
-
 		console.log('song "' + path + '" loaded');
-		if (locationMarkers) {
-			console.log('Marker locations:');
-			console.log(locationMarkers);
-		}
 
 	},
 	
