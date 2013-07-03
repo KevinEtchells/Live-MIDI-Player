@@ -2,14 +2,14 @@ var fs = require('fs'),
 	midiFileParser = require('midi-file-parser'),
 	midi = require('midi'),
 	output = new midi.output(),
-	currentSong,
+	currentSong = [],
 	on = false,
 	tempo = 120,
 	tempoOverride = false,
 	ticksPerBeat = 384, // TO DO - what about other time signatures, e.g. 6/8??
 	beatsPerBar = 4,
 	subBeats = 12,
-	locationMarkers = {}, // only uses first value for each key at the moment, but values stored as arrays for future implementation
+	locationMarkers = {},
 	newLocation = 0, // anything other than 0 means a position change is pending
 	mutedChannels = [false, false, false, false, false, false, false, false, false, false];
 	
@@ -31,15 +31,13 @@ var nextCommand = function(beatInfo) {
 	}
 	
 	if (on) {
-		currentSong.tracks.forEach(function(track, trackIndex) {
-			//if (!mutedChannels[trackIndex]) {
-				track.forEach(function(command) {
-					if (command.beatInfo && command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
-						processCommand(command);
-					}
-				});
-			//}
+
+		currentSong.forEach(function(command) {
+			if (command.beatInfo.bar === beatInfo.bar && command.beatInfo.beat === beatInfo.beat && command.beatInfo.subBeat === beatInfo.subBeat) {
+				processCommand(command);
+			}
 		});
+
 		setTimeout(function(beatInfo) {
 
 			// if end of bar check if we need to skip to a new position
@@ -55,11 +53,14 @@ var nextCommand = function(beatInfo) {
 			nextCommand(beatInfo);
 
 		}, parseInt(60000 / tempo / subBeats), beatInfo);
+
 	} else {
-		currentSong.tracks.forEach(function(track, trackIndex) {
+		
+		for (var trackIndex = 0; trackIndex < 16; trackIndex++) {
 			muteTrack(trackIndex);
-		});
+		}
 		console.log('\nStopped...');
+
 	}
 };
 
@@ -124,6 +125,7 @@ module.exports = {
 		tempoOverride = false;
 		locationMarkers = {};
 		mutedChannels = [false, false, false, false, false, false, false, false, false, false];
+		currentSong = [];
 		
 		// load file
 		try {
@@ -132,63 +134,74 @@ module.exports = {
 			console.log('file not found');
 			return false;
 		}
-		currentSong = midiFileParser(file);
+		var loadedSongData = midiFileParser(file);
 		
-		// load in control data
-		// subtype === 'trackName'
-		var controlTrack = currentSong.tracks.pop();
-		var cumulativeTime = 0;
-		controlTrack.forEach(function(command, index) {
-			cumulativeTime += command.deltaTime;
-			if (command.subtype === 'noteOn' && command.velocity > 0) {
-				var noteKeyMap = ['c', 'v', 'd', 'r', 'e', 'f', 't', 'g', 'y', 'a', 'w', 'b']
-				if (command.noteNumber < noteKeyMap.length) {
-					var bar = Math.floor( cumulativeTime / (ticksPerBeat * beatsPerBar) );
-					if (locationMarkers[noteKeyMap[command.noteNumber]]) {
-						locationMarkers[noteKeyMap[command.noteNumber]].push(bar);
-					} else {
-						locationMarkers[noteKeyMap[command.noteNumber]] = [bar];
-					}
-				}
-			}
-		});
 
-		// parse currentSong to put in absolute time references - this is primarily to get latestTime for the next loop.
+		// go through tempSong, adding to currentSong and adding in absolute time references
 		var latestTime = 0;
-		currentSong.tracks.forEach(function(track, index) {
-			var absoluteTime = 0;
-			track.forEach(function(command, index) {				
-				absoluteTime += command.deltaTime;
-				command.absoluteTime = absoluteTime;
+		loadedSongData.tracks.forEach(function(track) {
+			
+			var cumulativeTime = 0;
+			var isControl = false;
+			track.forEach(function(command) {
+				
+				cumulativeTime += command.deltaTime;
+				
+				if (isControl) {
+					if (command.subtype === 'noteOn' && command.velocity > 0) {
+						var noteKeyMap = ['c', 'v', 'd', 'r', 'e', 'f', 't', 'g', 'y', 'a', 'w', 'b'];
+						if (command.noteNumber < noteKeyMap.length) {
+							var bar = Math.floor( cumulativeTime / (ticksPerBeat * beatsPerBar) ) + 1;
+							locationMarkers[noteKeyMap[command.noteNumber]] = bar;
+						}
+					}
+					
+				} else {
+				
+					if (command.subtype === 'trackName') {
+						if (command.text.toLowerCase() === 'control') {
+							isControl = true;
+						}
+					} else if (command.subtype === 'setTempo' || command.subtype === 'timeSignature' || command.subtype === 'noteOn' || command.subtype === 'noteOff') {
+						command.absoluteTime = cumulativeTime;
+						currentSong.push(command);
+					}
+					
+				}
+				
 			});
-			if (absoluteTime > latestTime) {
-				latestTime = absoluteTime;
+			
+			if (cumulativeTime > latestTime) {
+				latestTime = cumulativeTime;
 			}
+			
 		});
 		
 		// parse currentSong putting in bar/beat/subBeat info
 		var subBeatVariance = (ticksPerBeat / subBeats) / 2;
-		currentSong.tracks.forEach(function(track, index) {
-			var beatInfo = {bar: 1, beat: 1, subBeat: 1};
-			for (indexTime = 0; indexTime <= latestTime; indexTime += (ticksPerBeat / subBeats)) {
-				track.forEach(function(command, index) {
-					// if it's a note-off, we want to bring this forward a subbeat to avoid the same note off and on at the same time
-					if (command.subtype === 'noteOff' || command.velocity === '0') { 
-						if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
-							command.beatInfo = minusSubBeat(JSON.parse(JSON.stringify(beatInfo)));
-						}
-					} else {
-						if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
-							if (command.subType === 'timeSignature') {
-								beatsPerBar = command.numerator;
-							}
-							command.beatInfo = JSON.parse(JSON.stringify(beatInfo));
-						}
+		var beatInfo = {bar: 1, beat: 1, subBeat: 1};		
+		for (indexTime = 0; indexTime <= (latestTime + subBeatVariance); indexTime += (ticksPerBeat / subBeats)) {
+			
+			currentSong.forEach(function(command, index) {
+				
+				// if it's a note-off, we want to bring this forward a subbeat to avoid the same note off and on at the same time
+				if (command.subtype === 'noteOff' || command.velocity === '0') {
+					if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
+						command.beatInfo = minusSubBeat(JSON.parse(JSON.stringify(beatInfo)));
 					}
-				});
-				beatInfo = addSubBeat(beatInfo);
-			}
-		});
+				} else {
+					if (command.absoluteTime <= (indexTime + subBeatVariance) && command.absoluteTime > (indexTime - subBeatVariance)) {
+						if (command.subType === 'timeSignature') {
+							beatsPerBar = command.numerator;
+						}
+						command.beatInfo = JSON.parse(JSON.stringify(beatInfo));
+					}
+				}
+			});
+			
+			beatInfo = addSubBeat(beatInfo);
+		}
+
 
 		console.log('song "' + path + '" loaded');
 		if (locationMarkers) {
@@ -222,13 +235,13 @@ module.exports = {
 	
 	jumpTo: function(key) {
 		if (locationMarkers[key]) {
-			console.log('\nJumping to bar ' + locationMarkers[key][0]);
+			console.log('\nJumping to bar ' + locationMarkers[key]);
 			if (on) {
-				newLocation = locationMarkers[key][0];
+				newLocation = locationMarkers[key];
 			} else {
 				on = true;
 				console.log('\nPlaying...');
-				nextCommand({bar: locationMarkers[key][0], beat: 1, subBeat: 1});
+				nextCommand({bar: locationMarkers[key], beat: 1, subBeat: 1});
 			}
 		}
 	},
