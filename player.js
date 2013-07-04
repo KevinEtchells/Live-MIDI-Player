@@ -9,7 +9,7 @@ var fs = require('fs'),
 	ticksPerBeat = 384, // TO DO - what about other time signatures, e.g. 6/8??
 	beatsPerBar = 4,
 	subBeats = 12,
-	locationMarkers = {},
+	locationMarkers = [],
 	newLocation = 0, // anything other than 0 means a position change is pending
 	mutedChannels = [false, false, false, false, false, false, false, false, false, false];
 	
@@ -123,7 +123,7 @@ module.exports = {
 		// reset to default values
 		on = false;
 		tempoOverride = false;
-		locationMarkers = {};
+		locationMarkers = [];
 		mutedChannels = [false, false, false, false, false, false, false, false, false, false];
 		currentSong = [];
 		
@@ -150,7 +150,11 @@ module.exports = {
 					command.absoluteTime = cumulativeTime;
 					currentSong.push(command);
 				} else if (command.subtype === 'marker') {
-					locationMarkers[command.text[0]] = Math.floor( cumulativeTime / (ticksPerBeat * beatsPerBar) ) + 1;
+					locationMarkers.push({
+						key: command.text[0], 
+						bar: Math.floor( cumulativeTime / (ticksPerBeat * beatsPerBar) ) + 1, 
+						description: command.text
+					});
 				}
 				
 			});
@@ -187,6 +191,8 @@ module.exports = {
 		}
 
 		console.log('song "' + path + '" loaded');
+		console.log(locationMarkers);
+		
 
 	},
 	
@@ -213,16 +219,18 @@ module.exports = {
 	},
 	
 	jumpTo: function(key) {
-		if (locationMarkers[key]) {
-			console.log('\nJumping to bar ' + locationMarkers[key]);
-			if (on) {
-				newLocation = locationMarkers[key];
-			} else {
-				on = true;
-				console.log('\nPlaying...');
-				nextCommand({bar: locationMarkers[key], beat: 1, subBeat: 1});
+		locationMarkers.forEach(function(location) {
+			if (location.key === key) {
+				console.log('\nJumping to bar ' + location.bar);
+				if (on) {
+					newLocation = location.bar;
+				} else {
+					on = true;
+					console.log('\nPlaying...');
+					nextCommand({bar: location.bar, beat: 1, subBeat: 1});
+				}
 			}
-		}
+		});
 	},
 	
 	toggleTrack: function(track) {

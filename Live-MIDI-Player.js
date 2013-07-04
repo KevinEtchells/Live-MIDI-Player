@@ -1,4 +1,6 @@
 // TO DO:
+// make output text tidier/clearer: process.stdout.clearLine(); process.stdout.cursorTo(0); process.stdout.write("Waiting");
+// Check Rosegarden using "You're the Word of God the Father"
 // Check 3/4 and 6/8
 // Documentation
 
@@ -83,7 +85,7 @@ process.stdin.on('data', function (charObj) {
 	} else if (char === '\3') {
 		console.log('\nExiting...'); 
 		process.exit(); 
-	} else if (char === 'c' || char === 'v' || char === 'd' || char === 'r' || char === 'e' || char === 'f' || char === 't' || char === 'g' || char === 'y' || char === 'a' || char === 'w' || char === 'b') {
+	} else {
 		player.jumpTo(char);
 	}
 
